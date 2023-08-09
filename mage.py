@@ -28,7 +28,7 @@ if current_date < datetime.date(2023, 9, 2):
 else:
     llm_name = "gpt-3.5-turbo"
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
-embeddings = OpenAIEmbeddings()
+
 template = """
 请使用以下上下文回答最后的问题。如果你不知道答案，那就说你不知道，不要试图编造答案。最多使用三句话。请尽可能地简洁。回答结束时请说“请问还有什么可以帮您”。请使用中文来回答问题。
 {context}
@@ -69,7 +69,7 @@ def load_db(pdf_list, chain_type, k):
         pdf_reader = PdfReader(pdf)
         for page in pdf_reader.pages:
             text += page.extract_text()
-
+    embeddings = OpenAIEmbeddings()
     chunks = text_splitter.split_text(text)
     #docs = text_splitter.split_text(text)
     # define embedding

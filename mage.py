@@ -19,30 +19,33 @@ from PyPDF2 import PdfReader
 
 # os.environ["http_proxy"] = "http://127.0.0.1:33210"
 # os.environ["https_proxy"] = "http://127.0.0.1:33210"
+#os.environ["OPENAI_API_KEY"] = "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"
 
 
-
-persist_directory = 'F:\项目学习\chatpdf\sustainability-13-13746-v2.pdf'  # 这个取决于你的环境，你可能需要修改这个路径
 st.title("PDF文档对话聊天机器人")
 #title = st.sidebar.text_input('此处填入API-KEY', 'API-KEY')
 user_api_key = st.sidebar.text_input(
     label="#### 在此填入API key填写完成后回车👇",
     placeholder="Paste your openAI API key, sk-",
     type="password")
-openai.api_key = user_api_key
-os.environ["OPENAI_API_KEY"] = user_api_key
-if openai.api_key :
+print(user_api_key)
+if user_api_key:
+    os.environ["OPENAI_API_KEY"] = user_api_key
+    openai.api_key = user_api_key
     try:
         response = openai.Completion.create(
         engine="text-davinci-002",
         prompt="Translate the following English text to French: '{}'",
-        max_tokens=60
+        max_tokens=60,
+        
      )
         st.sidebar.write(" 填入成功下一步选取pdf")
+        openai.api_key = user_api_key
+
     except Exception as e:
         st.sidebar.write("无效的API key，请重新填入", e)
 #openai.api_key = "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"
-embeddings = OpenAIEmbeddings(openai_api_key=openai.api_key)
+
 current_date = datetime.datetime.now().date()
 if current_date < datetime.date(2023, 9, 2):
     llm_name = "gpt-3.5-turbo-0301"
@@ -53,6 +56,7 @@ def load_db(pdf_list, chain_type, k):
     #loader = PyPDFLoader(file)
     #documents = loader.load()
     # split documents
+    #embeddings = OpenAIEmbeddings(openai_api_key=openai.api_key)
     text = ""
     for pdf in pdf_list:
         pdf_reader = PdfReader(pdf)
@@ -95,6 +99,8 @@ QA_CHAIN_PROMPT = PromptTemplate(input_variables=["context", "question"],templat
 
 st.sidebar.title("请选择PDF文件")
 pdf_list = st.sidebar.file_uploader("一次性选择一个或者多个PDF文件", type="pdf",accept_multiple_files=True)
+if pdf_list != []:
+    st.sidebar.write("文件载入成功，现在可以进行文档问答")
 print(pdf_list)
 
 
@@ -115,7 +121,7 @@ for message in st.session_state.messages:
 # Accept user input
 if prompt := st.chat_input("What is up?"):
     if pdf_list != []:
-        st.sidebar.write("文件载入成功，现在可以进行文档问答", e)
+
 
        # st.markdown(f"答案: {result['answer']}")
     # Add user message to chat history

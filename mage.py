@@ -27,13 +27,13 @@ if current_date < datetime.date(2023, 9, 2):
     llm_name = "gpt-3.5-turbo-0301"
 else:
     llm_name = "gpt-3.5-turbo"
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200,)
 
 template = """
-请使用以下上下文回答最后的问题。如果你不知道答案，那就说你不知道，不要试图编造答案。最多使用三句话。请尽可能地简洁。回答结束时请说“请问还有什么可以帮您”。请使用中文来回答问题。
-{context}
+请使用以下的上下文回答最后的问题。如果你不知道答案，那就说你不知道，不要试图编造答案。必须使用中文来简洁的回答以下问题。
+上下文：{context}
 问题: {question}
-有帮助的答案:"""
+"""
 QA_CHAIN_PROMPT = PromptTemplate(input_variables=["context", "question"],template=template,)
 #title = st.sidebar.text_input('此处填入API-KEY', 'API-KEY')
 def set_api_key():
@@ -58,17 +58,17 @@ def set_api_key():
 #openai.api_key = "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"
 
 
-def load_db(pdf_list, chain_type, k):
+def load_db(pdf, chain_type, k):
     # load documents
     #loader = PyPDFLoader(file)
     #documents = loader.load()
     # split documents
     #embeddings = OpenAIEmbeddings(openai_api_key=openai.api_key)
     text = ""
-    for pdf in pdf_list:
-        pdf_reader = PdfReader(pdf)
-        for page in pdf_reader.pages:
-            text += page.extract_text()
+    #for pdf in pdf_list:
+    pdf_reader = PdfReader(pdf)
+    for page in pdf_reader.pages:
+        text += page.extract_text()
     embeddings = OpenAIEmbeddings()
     chunks = text_splitter.split_text(text)
     #docs = text_splitter.split_text(text)
@@ -109,10 +109,11 @@ chat_history = []
 
 def main():
     st.sidebar.title("请选择PDF文件")
-    pdf_list = st.sidebar.file_uploader("一次性选择一个或者多个PDF文件", type="pdf", accept_multiple_files=True)
-    if pdf_list != []:
+    pdf_list = st.sidebar.file_uploader("一次性选择一个PDF文件", type="pdf", accept_multiple_files=False)
+    if pdf_list is not None:
         st.sidebar.write("文件载入成功，现在可以进行文档问答")
     print(pdf_list)
+
     # st.sidebar.title("聊天历史")
     # for exchange in chat_history:
     #     st.sidebar.markdown(f"Q: {exchange[0]}\nA: {exchange[1]}\n---")
@@ -121,11 +122,14 @@ def main():
         st.session_state.messages = []
     # Display chat messages from history on app rerun
     for message in st.session_state.messages:
+        print(message)
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
+        # with st.chat_message(message["role"]):
+        #     st.markdown(message["content"])
     # Accept user input
     if prompt := st.chat_input("What is up?"):
-        if pdf_list != []:
+        if pdf_list is not None:
             # st.markdown(f"答案: {result['answer']}")
             # Add user message to chat history
             st.session_state.messages.append({"role": "user", "content": prompt})
@@ -136,19 +140,20 @@ def main():
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
                 full_response = ""
-                qa = load_db(pdf_list, "stuff", 4)
+                qa = load_db(pdf_list, "stuff", 5)
                 result = qa({"question": prompt, "chat_history": chat_history})
                 chat_history.append((prompt, result["answer"]))
                 assistant_response = result['answer']
                 # Simulate stream of response with milliseconds delay
                 for chunk in assistant_response.split():
                     full_response += chunk + " "
-                    time.sleep(0.05)
+                    time.sleep(0.01)
                     # Add a blinking cursor to simulate typing
                     message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
             # Add assistant response to chat history
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
+                print(st.session_state.messages)
 
 
 # if st.button("提交"):

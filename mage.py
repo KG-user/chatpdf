@@ -27,10 +27,10 @@ if current_date < datetime.date(2023, 9, 2):
     llm_name = "gpt-3.5-turbo-0301"
 else:
     llm_name = "gpt-3.5-turbo"
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200,)
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200,separators=["\n\n", "\n", "(?<=\. )", " ", ""])
 
 template = """
-请使用以下的上下文回答最后的问题。如果你不知道答案，那就说你不知道，不要试图编造答案。必须使用中文来简洁的回答以下问题。
+请使用以下的上下文回答最后的问题。如果你不知道答案，那就说你不知道，不要试图编造答案。必须使用中文来详细回答以下问题。
 上下文：{context}
 问题: {question}
 """
@@ -75,10 +75,11 @@ def load_db(pdf, chain_type, k):
     # define embedding
     # create vector database from data
     knowledge_base = FAISS.from_texts(chunks, embeddings)
-    #db = DocArrayInMemorySearch.from_documents(docs, embeddings)
+    #knowledge_base = DocArrayInMemorySearch.from_texts(chunks, embeddings)
 
     # define retriever
     retriever = knowledge_base.as_retriever(search_type="similarity", search_kwargs={"k": k})
+    print(retriever)
     # create a chatbot chain. Memory is managed externally.
     qa = ConversationalRetrievalChain.from_llm(
         llm=ChatOpenAI(model_name=llm_name, temperature=0),
@@ -122,7 +123,7 @@ def main():
         st.session_state.messages = []
     # Display chat messages from history on app rerun
     for message in st.session_state.messages:
-        print(message)
+        #print(message)
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
         # with st.chat_message(message["role"]):
@@ -140,20 +141,20 @@ def main():
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
                 full_response = ""
-                qa = load_db(pdf_list, "stuff", 5)
+                qa = load_db(pdf_list, "stuff", 10)
                 result = qa({"question": prompt, "chat_history": chat_history})
                 chat_history.append((prompt, result["answer"]))
                 assistant_response = result['answer']
                 # Simulate stream of response with milliseconds delay
                 for chunk in assistant_response.split():
                     full_response += chunk + " "
-                    time.sleep(0.01)
+                    time.sleep(0.05)
                     # Add a blinking cursor to simulate typing
                     message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
             # Add assistant response to chat history
                 st.session_state.messages.append({"role": "assistant", "content": full_response})
-                print(st.session_state.messages)
+                #print(st.session_state.messages)
 
 
 # if st.button("提交"):

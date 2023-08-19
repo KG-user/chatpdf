@@ -3,12 +3,12 @@ import glob
 import os
 import openai
 import streamlit as st
-from langchain.chains import ConversationalRetrievalChain
+from langchain.chains import ConversationalRetrievalChain,RetrievalQA
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import PyPDFLoader
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.prompts import PromptTemplate
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter,CharacterTextSplitter,TokenTextSplitter
 from langchain.vectorstores import DocArrayInMemorySearch
 from langchain.vectorstores import FAISS
 from dotenv import load_dotenv
@@ -20,6 +20,7 @@ from PyPDF2 import PdfReader
 # os.environ["http_proxy"] = "http://127.0.0.1:33210"
 # os.environ["https_proxy"] = "http://127.0.0.1:33210"
 #os.environ["OPENAI_API_KEY"] = "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"
+#openai.api_key = "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"
 st.title("PDF文档对话聊天机器人")
 current_date = datetime.datetime.now().date()
 
@@ -27,10 +28,10 @@ if current_date < datetime.date(2023, 9, 2):
     llm_name = "gpt-3.5-turbo-0301"
 else:
     llm_name = "gpt-3.5-turbo"
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200,separators=["\n\n", "\n", "(?<=\. )", " ", ""])
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
 
 template = """
-请使用以下的上下文回答最后的问题。如果你不知道答案，那就说你不知道，不要试图编造答案。必须使用中文来详细回答以下问题。
+请使用以下的上下文回答最后的问题。如果你不知道答案，那就说你不知道，不要试图编造答案。必须使用中文来回答以下问题，回答的内容尽可能详细。
 上下文：{context}
 问题: {question}
 """
@@ -55,7 +56,7 @@ def set_api_key():
 
     # except Exception as e:
     #     st.sidebar.write("无效的API key，请重新填入", e)
-#openai.api_key = "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"
+
 
 
 def load_db(pdf, chain_type, k):
@@ -68,7 +69,9 @@ def load_db(pdf, chain_type, k):
     #for pdf in pdf_list:
     pdf_reader = PdfReader(pdf)
     for page in pdf_reader.pages:
+        #print(page.extract_text())
         text += page.extract_text()
+
     embeddings = OpenAIEmbeddings()
     chunks = text_splitter.split_text(text)
     #docs = text_splitter.split_text(text)
@@ -81,12 +84,13 @@ def load_db(pdf, chain_type, k):
     retriever = knowledge_base.as_retriever(search_type="similarity", search_kwargs={"k": k})
     print(retriever)
     # create a chatbot chain. Memory is managed externally.
-    qa = ConversationalRetrievalChain.from_llm(
+    qa = RetrievalQA.from_chain_type(
         llm=ChatOpenAI(model_name=llm_name, temperature=0),
         chain_type=chain_type,
         retriever=retriever,
         return_source_documents=True,
-        return_generated_question=True,
+        chain_type_kwargs={"prompt": QA_CHAIN_PROMPT}
+
     )
     return qa
 
@@ -141,10 +145,10 @@ def main():
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
                 full_response = ""
-                qa = load_db(pdf_list, "stuff", 10)
-                result = qa({"question": prompt, "chat_history": chat_history})
-                chat_history.append((prompt, result["answer"]))
-                assistant_response = result['answer']
+                qa = load_db(pdf_list, "stuff", 4)
+                result = qa({"query": prompt, "chat_history": chat_history})
+                chat_history.append((prompt, result["result"]))
+                assistant_response =result["result"]
                 # Simulate stream of response with milliseconds delay
                 for chunk in assistant_response.split():
                     full_response += chunk + " "
